@@ -7,151 +7,250 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #f4f7f9;
+            color: #333;
         }
         .container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        h1, h2 {
+            border-bottom: 1px solid #eef;
+            padding-bottom: 10px;
+            font-weight: 600;
         }
         #videoPlayer {
             width: 100%;
-            max-width: 800px;
+            border-radius: 8px;
             background: #000;
         }
         .upload-section {
-            border: 2px dashed #ccc;
-            padding: 20px;
-            text-align: center;
+            margin-bottom: 20px;
         }
-        button {
-            padding: 10px 20px;
+        #uploadForm {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        #videoInput {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 30px;
+            cursor: pointer;
+            text-align: center;
+            background-color: #fafafa;
+        }
+        #videoInput:hover {
+            border-color: #007bff;
+            background-color: #f0f6ff;
+        }
+        #uploadButton {
+            padding: 12px 20px;
             background: #007bff;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
         }
-        button:hover {
+        #uploadButton:hover {
             background: #0056b3;
         }
-        #status {
-            margin-top: 10px;
-            padding: 10px;
+        #uploadButton:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+        .progress-container {
+            margin-top: 15px;
+            display: none; /* Initially hidden */
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e9ecef;
             border-radius: 5px;
+            overflow: hidden;
         }
-        .success {
-            background: #d4edda;
-            color: #155724;
+        .progress-bar-inner {
+            width: 0%;
+            height: 20px;
+            background-color: #007bff;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            transition: width 0.4s ease;
         }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
+        #status {
+            margin-top: 15px;
+            font-weight: 500;
         }
-        #timeDisplay {
-            margin-top: 10px;
-            font-family: monospace;
-            font-size: 14px;
+        #result {
+            margin-top: 15px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>HLS 串流測試</h1>
+        <h1>HLS 串流產生器</h1>
         
         <div class="upload-section">
-            <h2>上傳影片</h2>
-            <input type="file" id="videoInput" accept="video/*">
-            <button onclick="processVideo()">處理影片</button>
-            <div id="status"></div>
+            <h2>1. 上傳影片</h2>
+            <form id="uploadForm">
+                <input type="file" id="videoInput" name="video" accept="video/*" required>
+                <button type="submit" id="uploadButton">上傳並處理</button>
+            </form>
         </div>
 
+        <div id="uploadProgressContainer" class="progress-container">
+            <h3>上傳進度</h3>
+            <div class="progress-bar">
+                <div id="uploadProgressBar" class="progress-bar-inner">0%</div>
+            </div>
+        </div>
+
+        <div id="status"></div>
+        <div id="result"></div>
+
+        <h2>2. 播放影片</h2>
         <video id="videoPlayer" controls></video>
-        <div id="timeDisplay"></div>
     </div>
 
     <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const videoInput = document.getElementById('videoInput');
+        const uploadButton = document.getElementById('uploadButton');
+        
+        const uploadProgressContainer = document.getElementById('uploadProgressContainer');
+        const uploadProgressBar = document.getElementById('uploadProgressBar');
+        
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+        const videoPlayer = document.getElementById('videoPlayer');
         let hls = null;
-        const video = document.getElementById('videoPlayer');
-        const timeDisplay = document.getElementById('timeDisplay');
 
-        // 格式化時間函數
-        function formatTime(seconds) {
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
-            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
-
-        // 監聽影片時間更新
-        video.addEventListener('timeupdate', () => {
-            const currentTime = video.currentTime;
-            const duration = video.duration;
-            timeDisplay.textContent = `播放時間: ${formatTime(currentTime)} / ${formatTime(duration)}`;
-            console.log(`當前播放時間: ${currentTime.toFixed(2)} 秒`);
-        });
-
-        function processVideo() {
-            debugger;
-
-            const fileInput = document.getElementById('videoInput');
-            const statusDiv = document.getElementById('status');
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            if (!fileInput.files.length) {
-                statusDiv.className = 'error';
-                statusDiv.textContent = '請選擇一個影片文件';
+            if (!videoInput.files.length) {
+                statusDiv.textContent = '請選擇一個影片檔案。';
                 return;
             }
 
-            const file = fileInput.files[0];
+            const file = videoInput.files[0];
             const formData = new FormData();
             formData.append('video', file);
 
-            statusDiv.textContent = '正在處理影片...';
-            statusDiv.className = '';
+            // Reset UI
+            uploadButton.disabled = true;
+            statusDiv.textContent = '準備上傳...';
+            statusDiv.style.color = '#333';
+            resultDiv.innerHTML = '';
+            uploadProgressContainer.style.display = 'block';
+            uploadProgressBar.style.width = '0%';
+            uploadProgressBar.textContent = '0%';
 
-            fetch('/api/video/process', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    statusDiv.className = 'success';
-                    statusDiv.textContent = '影片處理完成！';
-                    playStream(data.streamUrl);
-                } else {
-                    throw new Error(data.error);
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    uploadProgressBar.style.width = percentComplete + '%';
+                    uploadProgressBar.textContent = percentComplete + '%';
+                    statusDiv.textContent = `正在上傳... (${percentComplete}%)`;
                 }
-            })
-            .catch(error => {
-                statusDiv.className = 'error';
-                statusDiv.textContent = '錯誤：' + error.message;
             });
+
+            xhr.addEventListener('load', function() {
+                uploadButton.disabled = false;
+                if (xhr.status === 202) { // Accepted
+                    statusDiv.textContent = '上傳完成，影片處理中...';
+                    const response = JSON.parse(xhr.responseText);
+                    pollProgress(response.jobId);
+                } else {
+                    handleError(xhr.responseText);
+                }
+            });
+
+            xhr.addEventListener('error', function() {
+                uploadButton.disabled = false;
+                handleError('上傳時發生網路錯誤。');
+            });
+
+            xhr.open('POST', '/api/video/process');
+            xhr.send(formData);
+        });
+
+        function pollProgress(jobId) {
+            const intervalId = setInterval(() => {
+                fetch(`/api/video/progress/${jobId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`伺服器錯誤: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.inProgress) {
+                            // Job is still running, do nothing, the status text is already set.
+                            return;
+                        } 
+                        
+                        // Job is done
+                        clearInterval(intervalId);
+                        if (data.success) {
+                            statusDiv.textContent = '影片處理完成！';
+                            resultDiv.innerHTML = `<p>串流網址: <a href="${data.streamUrl}" target="_blank">${data.streamUrl}</a></p>`;
+                            playStream(data.streamUrl);
+                        } else {
+                            handleError(data.error || '處理影片時發生未知錯誤。');
+                        }
+                    })
+                    .catch(error => {
+                        clearInterval(intervalId);
+                        handleError(error.message);
+                    });
+            }, 2000); // Poll every 2 seconds
+        }
+
+        function handleError(message) {
+            let errorMsg = message;
+            try {
+                const parsed = JSON.parse(message);
+                if(parsed && parsed.error) {
+                    errorMsg = parsed.error;
+                }
+            } catch (e) {
+                // Not a JSON error message, use as is
+            }
+            statusDiv.textContent = `錯誤: ${errorMsg}`;
+            statusDiv.style.color = 'red';
+            uploadButton.disabled = false;
         }
 
         function playStream(url) {
             if (hls) {
                 hls.destroy();
             }
-
             if (Hls.isSupported()) {
                 hls = new Hls();
                 hls.loadSource(url);
-                hls.attachMedia(video);
+                hls.attachMedia(videoPlayer);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play();
+                    videoPlayer.play();
                 });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.addEventListener('loadedmetadata', () => {
-                    video.play();
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayer.src = url;
+                videoPlayer.addEventListener('loadedmetadata', () => {
+                    videoPlayer.play();
                 });
             }
         }
     </script>
 </body>
-</html> 
+</html>
