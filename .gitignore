@@ -1,0 +1,78 @@
+# === Visual Studio / .NET ===
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+bin/
+obj/
+artifacts/
+publish/
+*.dll
+*.exe
+
+# Rider / JetBrains
+.idea/
+
+# NuGet
+*.nupkg
+packages/
+# NuGet v3's project.json files
+project.lock.json
+project.fragment.lock.json
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ASP.NET / ASP.NET Core
+wwwroot/node_modules/
+wwwroot/lib/
+
+# User secrets
+secrets.json
+secrets.*.json
+
+# EF Core Migrations (optional)
+Migrations/ # 如果你想把 migration 檔版控，請移除此行
+
+# Temp files
+*.tmp
+*.temp
+*.pid
+
+# Docker
+docker-compose*.yml
+**/docker-compose*.yml
+
+# Editor directories and files
+*.swp
+*.swo
+
+# === 忽略你要排除的資料夾（紅框） ===
+# 如果你要完全不把這些資料夾及其內容加到版本控制：
+streams/
+uploads/
+
+# ---------------------------
+# 可選：如果你想保留空資料夾結構（保留資料夾但忽略其內容），請改用下面的方式
+# 並在每個資料夾內新增一個 .gitkeep（或 README.keep）檔案並提交。
+#
+# streams/*
+# uploads/*
+# !streams/.gitkeep
+# !uploads/.gitkeep
+#
+# 註：上面用法會忽略資料夾內所有檔案，但允許 .gitkeep 被追蹤，用來保留空資料夾結構。

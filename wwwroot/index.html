@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS 串流測試</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px;
+            background: #000;
+        }
+        .upload-section {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        #timeDisplay {
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HLS 串流測試</h1>
+        
+        <div class="upload-section">
+            <h2>上傳影片</h2>
+            <input type="file" id="videoInput" accept="video/*">
+            <button onclick="processVideo()">處理影片</button>
+            <div id="status"></div>
+        </div>
+
+        <video id="videoPlayer" controls></video>
+        <div id="timeDisplay"></div>
+    </div>
+
+    <script>
+        let hls = null;
+        const video = document.getElementById('videoPlayer');
+        const timeDisplay = document.getElementById('timeDisplay');
+
+        // 格式化時間函數
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // 監聽影片時間更新
+        video.addEventListener('timeupdate', () => {
+            const currentTime = video.currentTime;
+            const duration = video.duration;
+            timeDisplay.textContent = `播放時間: ${formatTime(currentTime)} / ${formatTime(duration)}`;
+            console.log(`當前播放時間: ${currentTime.toFixed(2)} 秒`);
+        });
+
+        function processVideo() {
+            debugger;
+
+            const fileInput = document.getElementById('videoInput');
+            const statusDiv = document.getElementById('status');
+            
+            if (!fileInput.files.length) {
+                statusDiv.className = 'error';
+                statusDiv.textContent = '請選擇一個影片文件';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('video', file);
+
+            statusDiv.textContent = '正在處理影片...';
+            statusDiv.className = '';
+
+            fetch('/api/video/process', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusDiv.className = 'success';
+                    statusDiv.textContent = '影片處理完成！';
+                    playStream(data.streamUrl);
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                statusDiv.className = 'error';
+                statusDiv.textContent = '錯誤：' + error.message;
+            });
+        }
+
+        function playStream(url) {
+            if (hls) {
+                hls.destroy();
+            }
+
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', () => {
+                    video.play();
+                });
+            }
+        }
+    </script>
+</body>
+</html> 
