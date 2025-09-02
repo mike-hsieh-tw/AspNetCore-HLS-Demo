@@ -20,10 +20,16 @@
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
-        h1, h2 {
+        h1, h2, h3 {
             border-bottom: 1px solid #eef;
             padding-bottom: 10px;
             font-weight: 600;
+        }
+        h3 {
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: none;
         }
         #videoPlayer {
             width: 100%;
@@ -80,11 +86,16 @@
         .progress-bar-inner {
             width: 0%;
             height: 20px;
-            background-color: #007bff;
             text-align: center;
             line-height: 20px;
             color: white;
             transition: width 0.4s ease;
+        }
+        #uploadProgressBar {
+            background-color: #007bff; /* Blue for upload */
+        }
+        #processingProgressBar {
+            background-color: #28a745; /* Green for processing */
         }
         #status {
             margin-top: 15px;
@@ -114,6 +125,13 @@
             </div>
         </div>
 
+        <div id="processingProgressContainer" class="progress-container">
+            <h3>處理進度(剩餘時間=<span id="processingRemaining"></span>)</h3>
+            <div class="progress-bar">
+                <div id="processingProgressBar" class="progress-bar-inner">0%</div>
+            </div>
+        </div>
+
         <div id="status"></div>
         <div id="result"></div>
 
@@ -128,6 +146,10 @@
         
         const uploadProgressContainer = document.getElementById('uploadProgressContainer');
         const uploadProgressBar = document.getElementById('uploadProgressBar');
+
+        const processingProgressContainer = document.getElementById('processingProgressContainer');
+        const processingProgressBar = document.getElementById('processingProgressBar');
+        const processingRemaining = document.getElementById('processingRemaining');
         
         const statusDiv = document.getElementById('status');
         const resultDiv = document.getElementById('result');
@@ -151,9 +173,15 @@
             statusDiv.textContent = '準備上傳...';
             statusDiv.style.color = '#333';
             resultDiv.innerHTML = '';
+            videoPlayer.style.display = 'none';
+
             uploadProgressContainer.style.display = 'block';
             uploadProgressBar.style.width = '0%';
             uploadProgressBar.textContent = '0%';
+
+            processingProgressContainer.style.display = 'none';
+            processingProgressBar.style.width = '0%';
+            processingProgressBar.textContent = '0%';
 
             const xhr = new XMLHttpRequest();
 
@@ -167,9 +195,9 @@
             });
 
             xhr.addEventListener('load', function() {
-                uploadButton.disabled = false;
                 if (xhr.status === 202) { // Accepted
                     statusDiv.textContent = '上傳完成，影片處理中...';
+                    processingProgressContainer.style.display = 'block'; // Show processing bar
                     const response = JSON.parse(xhr.responseText);
                     pollProgress(response.jobId);
                 } else {
@@ -178,7 +206,6 @@
             });
 
             xhr.addEventListener('error', function() {
-                uploadButton.disabled = false;
                 handleError('上傳時發生網路錯誤。');
             });
 
@@ -197,15 +224,26 @@
                     })
                     .then(data => {
                         if (data.inProgress) {
-                            // Job is still running, do nothing, the status text is already set.
+                            const percent = data.progress || 0;
+                            statusDiv.textContent = `影片處理中... (${percent}%)`;
+                            processingProgressBar.style.width = percent + '%';
+                            processingProgressBar.textContent = percent + '%';
+
+                            processingRemaining.textContent = `${data.remaining}`;
                             return;
                         } 
                         
                         // Job is done
                         clearInterval(intervalId);
+                        processingProgressBar.style.width = '100%';
+                        processingProgressBar.textContent = '100%';
+
+                        processingRemaining.textContent = '00:00:00';
+
                         if (data.success) {
                             statusDiv.textContent = '影片處理完成！';
                             resultDiv.innerHTML = `<p>串流網址: <a href="${data.streamUrl}" target="_blank">${data.streamUrl}</a></p>`;
+                            videoPlayer.style.display = 'block';
                             playStream(data.streamUrl);
                         } else {
                             handleError(data.error || '處理影片時發生未知錯誤。');
@@ -215,7 +253,7 @@
                         clearInterval(intervalId);
                         handleError(error.message);
                     });
-            }, 2000); // Poll every 2 seconds
+            }, 1000); // Poll every 1 seconds
         }
 
         function handleError(message) {
