@@ -86,6 +86,8 @@ By default, the server will be accessible at the URLs specified in the console o
 
 ## Usage / 如何使用
 
+<img width="1003" height="1012" alt="image" src="https://github.com/user-attachments/assets/abab0e9d-365d-4cf0-bc98-605bce0ad773" />
+
 1.  Open your web browser and navigate to the application's URL (e.g., `https://localhost:7112`).
     打開您的網頁瀏覽器並前往應用程式的 URL (例如 `https://localhost:7112`)。
 
